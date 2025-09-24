@@ -3,20 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>租金比較表單</title>
+  <title>租金區間試算表</title>
   <style>
     body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC","Helvetica Neue",Arial,"PingFang TC","Heiti TC",sans-serif;margin:20px}
     label{display:block;margin-top:10px;font-size:14px}
     input,select,button{padding:6px 10px;font-size:14px;margin-top:4px}
     button{cursor:pointer}
+    fieldset{border:1px solid #ddd;border-radius:10px;padding:12px;margin-top:12px}
+    legend{font-size:13px;color:#555;padding:0 6px}
     .result{margin-top:20px;font-size:40px;font-weight:bold}
     .ok{color:green}
     .warn{color:red}
     .detail{margin-top:8px;font-size:16px;color:#333;line-height:1.8}
+    .bonus-block{border:2px solid #f39c12;background:#fff8e6;padding:10px;margin-top:15px;border-radius:8px}
+    .muted{color:#666}
+    .note{margin-top:20px;color:red;font-size:14px;font-weight:bold}
   </style>
 </head>
 <body>
-  <h1>租金比較表單</h1>
+  <h1>租金區間試算表</h1>
 
   <form id="rentForm">
     <label>行政區
@@ -54,11 +59,34 @@
       <input id="currentRent" type="number" min="0" step="1" required>
     </label>
 
+    <fieldset>
+      <legend>額外加分（另外顯示，不與原本金額混合）</legend>
+
+      <label>裝潢
+        <select id="deco">
+          <option value="0">未裝潢（0%）</option>
+          <option value="2.5">簡易裝潢（2.5%）</option>
+          <option value="5">中等裝潢（5%）</option>
+        </select>
+      </label>
+
+      <label>區位（生活機能指數，0–5%）
+        <input id="areaPct" type="number" min="0" max="5" step="0.1" value="0">
+      </label>
+
+      <label>設備加分（元，依類型有上限：<span id="equipCapLabel">請先選擇是否為套房</span>）
+        <input id="equip" type="number" min="0" step="1" value="0">
+      </label>
+
+      <div class="muted">說明：裝潢與區位以「最高租金」為基礎計算百分比，加分金額採整數（無條件進位）；設備加分依上限（套房 1000 / 非套房 2000）。</div>
+    </fieldset>
+
     <button type="submit">送出</button>
   </form>
 
   <div id="result" class="result"></div>
   <div id="detail" class="detail"></div>
+  <div id="note" class="note"></div>
 
 <script>
 // === 基礎資料 ===
@@ -77,13 +105,19 @@ const BRACKETS=[5,10,15,20,25,30,35,40,200];
 const BRACKET_LABELS=["0-5","5-10","10-15","15-20","20-25","25-30","30-35","35-40","40+"];
 
 function bracketIndex(age){
-  for(let i=0;i<BRACKETS.length;i++){
-    if(age<=BRACKETS[i]) return i;
-  }
+  for(let i=0;i<BRACKETS.length;i++){ if(age<=BRACKETS[i]) return i; }
   return BRACKETS.length-1;
 }
 function getRate(age){ return ADJUST_RATES[bracketIndex(age)]; }
 function getBracketLabel(age){ return BRACKET_LABELS[bracketIndex(age)]; }
+
+// 顯示設備上限標籤
+const isStudioSel = document.getElementById('isStudio');
+const equipCapLabel = document.getElementById('equipCapLabel');
+isStudioSel.addEventListener('change', ()=>{
+  const cap = isStudioSel.value==="yes" ? 1000 : (isStudioSel.value==="no" ? 2000 : null);
+  equipCapLabel.textContent = cap ? `上限 ${cap.toLocaleString()} 元` : '請先選擇是否為套房';
+});
 
 document.getElementById("rentForm").addEventListener("submit", e=>{
   e.preventDefault();
@@ -93,26 +127,80 @@ document.getElementById("rentForm").addEventListener("submit", e=>{
   const pings=parseFloat(document.getElementById("pings").value);
   const current=Number(document.getElementById("currentRent").value);
 
-  // 基準值
+  const decoPct=parseFloat(document.getElementById("deco").value)||0;
+  let areaPct=parseFloat(document.getElementById("areaPct").value)||0;
+  areaPct = Math.min(Math.max(areaPct,0),5);
+  let equipInput = Number(document.getElementById("equip").value)||0;
+
+  const resEl=document.getElementById("result");
+  const detailEl=document.getElementById("detail");
+  const noteEl=document.getElementById("note");
+
+  // 上限規則：無法承作
+  if(isStudio==="yes" && current>21000){
+    resEl.textContent="無法承作";
+    resEl.className="result warn";
+    detailEl.innerHTML = `（套房上限 21,000，現在租金 <b>${current}</b> 元）`;
+    noteEl.textContent="以上試算結果僅供參考，最後結果將由審查單位認定";
+    return;
+  }
+  if(isStudio==="no" && current>35000){
+    resEl.textContent="無法承作";
+    resEl.className="result warn";
+    detailEl.innerHTML = `（非套房上限 35,000，現在租金 <b>${current}</b> 元）`;
+    noteEl.textContent="以上試算結果僅供參考，最後結果將由審查單位認定";
+    return;
+  }
+
+  // 基本計算
   const base=(isStudio==="yes"?STUDIO[dist]:HOUSEHOLD[dist]);
   const rate=getRate(age);
-  const band=Math.ceil(base*(1+rate));   // 租金區間（進位）
-  const product=Math.ceil(band*pings);   // 最高租金（進位）
-  const result=product>=current?"O":"X";
+  const band=Math.ceil(base*(1+rate));
+  const highest=Math.ceil(band*pings);
+  const pass = highest >= current;
   const label=`${getBracketLabel(age)} ${isStudio==="yes"?"套房":"非套房"}`;
 
-  // 顯示結果
-  const resEl=document.getElementById("result");
-  resEl.textContent=result;
-  resEl.className="result "+(result==="O"?"ok":"warn");
+  // 額外加分
+  const decoBonus   = Math.ceil(highest * (decoPct/100));
+  const areaBonus   = Math.ceil(highest * (areaPct/100));
+  const equipCap    = isStudio==="yes" ? 1000 : 2000;
+  const equipBonus  = Math.min(Math.ceil(Math.max(equipInput,0)), equipCap);
+  const totalBonus  = decoBonus + areaBonus + equipBonus;
 
-  // 顯示所有細節
-  document.getElementById("detail").innerHTML =
+  const highestWithBonus = highest + totalBonus;
+  const passWithBonus = highestWithBonus >= current;
+
+  // O/X 結果
+  resEl.textContent = pass ? "O" : "X";
+  resEl.className   = "result " + (pass ? "ok" : "warn");
+
+  // 詳細資訊
+  let html =
     `對應分段：<b>${label}</b><br>`+
     `租金區間：<b>${band}</b><br>`+
-    `坪數：<b>${pings.toFixed(2)}</b><br>`+
-    `最高租金（無條件進位）：<b>${product}</b> 元<br>`+
-    `現在租金：<b>${current}</b> 元`;
+    (pass
+      ? `現在租金：<b>${current}</b> 元`
+      : `坪數：<b>${pings.toFixed(2)}</b><br>`+
+        `最高租金（無條件進位）：<b>${highest}</b> 元<br>`+
+        `現在租金：<b>${current}</b> 元`
+    );
+
+  // 額外加分區塊（框線顯示）
+  html +=
+    `<div class="bonus-block">`+
+    `<u>額外加分（不與原本金額混合）</u><br>`+
+    `‧ 裝潢加分（${decoPct}%）：<b>${decoBonus}</b> 元<br>`+
+    `‧ 區位加分（${areaPct}%）：<b>${areaBonus}</b> 元<br>`+
+    `‧ 設備加分（上限 ${equipCap.toLocaleString()}）：<b>${equipBonus}</b> 元<br>`+
+    `合計加分：<b>${totalBonus}</b> 元<br>`+
+    `最高租金(含加分)：<b>${highestWithBonus}</b> 元<br>`+
+    `加分後判斷：<b style="color:${passWithBonus?"green":"red"}">${passWithBonus?"O":"X"}</b>`+
+    `</div>`;
+
+  detailEl.innerHTML = html;
+
+  // 紅字提示
+  noteEl.textContent="以上試算結果僅供參考，最後結果將由審查單位認定";
 });
 </script>
 </body>
