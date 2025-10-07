@@ -100,7 +100,7 @@ const STUDIO = {"西屯區":930,"北屯區":880,"南屯區":870,"北區":870,"�
 "大雅區":760,"神岡區":700,"梧棲區":690,"清水區":680,"大甲區":650,"外埔區":600,"霧峰區":600,"石岡區":600,
 "東勢區":420,"新社區":400,"和平區":320,"其他":320};
 
-// 調整率（先用舊數據，若有新的可替換）
+// 調整率：可依需求更新
 const ADJUST_RATES=[0.20,0.18,0.16,0.13,0.10,0.07,0.04,0.00,-0.05];
 
 // 年限分段：0–4, 5–9, 10–14, 15–19, 20–24, 25–29, 30–34, 35–39, 40+
@@ -156,10 +156,10 @@ document.getElementById("rentForm").addEventListener("submit", e=>{
   }
 
   // 基本計算
-  const base=(isStudio==="yes"?STUDIO[dist]:HOUSEHOLD[dist]);
-  const rate=getRate(age);
-  const band=Math.ceil(base*(1+rate));
-  const highest=Math.ceil(band*pings);
+  const base=(isStudio==="yes"?STUDIO[dist]:HOUSEHOLD[dist]); // 原始表數字
+  const rate=getRate(age);                                     // 調等率（因屋齡）
+  const band=Math.ceil(base*(1+rate));                         // 租金區間（進位）
+  const highest=Math.ceil(band*pings);                         // 最高租金（進位）
   const pass = highest >= current;
   const label=`${getBracketLabel(age)} ${isStudio==="yes"?"套房":"非套房"}`;
 
@@ -177,10 +177,12 @@ document.getElementById("rentForm").addEventListener("submit", e=>{
   resEl.textContent = pass ? "O" : "X";
   resEl.className   = "result " + (pass ? "ok" : "warn");
 
-  // 詳細資訊
+  // 詳細資訊（新增：租金區間表 & 調等率）
   let html =
     `對應分段：<b>${label}</b><br>`+
     `租金區間：<b>${band}</b><br>`+
+    `租金區間表（原始基準）：<b>${base}</b><br>`+
+    `調等率：<b>${(rate*100).toFixed(2)}%</b><br>`+
     (pass
       ? `現在租金：<b>${current}</b> 元`
       : `坪數：<b>${pings.toFixed(2)}</b><br>`+
