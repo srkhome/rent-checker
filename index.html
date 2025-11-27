@@ -220,7 +220,6 @@ document.getElementById("rentForm").addEventListener("submit", e=>{
   let html =
     `租金區間（每坪）：<b>${priceBand}</b><br>`+
     `租金區間表（0–4 年基準，元／坪）：<b>${priceBase}</b><br>`+
-    `調等率：<b>${(rateFromBase*100).toFixed(2)}%</b><br>`+
     (pass
       ? `現在租金：<b>${current.toLocaleString()}</b> 元`
       : `坪數：<b>${pings.toFixed(2)}</b><br>`+
