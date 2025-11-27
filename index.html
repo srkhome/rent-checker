@@ -30,7 +30,7 @@
     }
     .tooltip .tooltip-text {
       visibility: hidden;
-      width: 260px;
+      width: 280px;
       background: #333;
       color: #fff;
       text-align: left;
@@ -127,7 +127,8 @@
 
       <div class="muted">
         說明：裝修與區位以「最高租金」為基礎計算百分比，加分金額採整數（無條件進位）；
-        設備調整金額總額以套房 1,000 元／月、非套房 2,000 元／月為上限。
+        設備調整金額依原表逐項累計（冷氣、冰箱、洗衣機、家具等），本工具僅填入合計後金額，
+        並以套房 1,000 元／月、非套房 2,000 元／月為上限。
       </div>
 
       <div style="margin-top: 10px; font-size: 14px;">
@@ -136,11 +137,19 @@
         <div class="tooltip">
           區位 ℹ️
           <span class="tooltip-text">
-            <b>區位調整（依表二）</b><br>
-            優質區位：+5%（生活機能佳、交通便利）<br>
-            中上區位：+3%（一般生活範圍）<br>
-            中下區位：0%（無明顯區位優勢）<br><br>
-            ※ 依規定以「最高租金」為基礎計算
+            <b>區位調整（依原始資料表二）</b><br>
+            ‧ 優質區位：+5%<br>
+            ─ 生活機能佳、商圈完整（市場、賣場、百貨）、<br>
+            &nbsp;&nbsp;交通便捷（臨捷運／車站／主要幹道）、<br>
+            &nbsp;&nbsp;鄰近學區、醫療機構、公園綠地等，<br>
+            &nbsp;&nbsp;符合原表所列多項優勢者。<br><br>
+            ‧ 中上區位：+3%<br>
+            ─ 一般住宅區，生活機能尚稱便利，<br>
+            &nbsp;&nbsp;部分設施距離較遠或密度較低。<br><br>
+            ‧ 中下區位：0%<br>
+            ─ 位於邊陲或生活機能明顯不足，<br>
+            &nbsp;&nbsp;交通及周邊設施條件較差。<br><br>
+            ※ 依原則以「最高租金」為基數，按 0 / 3 / 5 % 調整。
           </span>
         </div>
         <br>
@@ -148,11 +157,19 @@
         <div class="tooltip">
           室內裝修 ℹ️
           <span class="tooltip-text">
-            <b>室內裝修（依表三）</b><br>
-            中等裝修：+5%（天花板、較佳設備）<br>
-            簡易裝修：+3%（基本油漆、修繕）<br>
-            未裝修：0%<br><br>
-            ※ 依規定以「最高租金」為基礎計算
+            <b>室內裝修調整（依原始資料表三）</b><br>
+            ‧ 中等裝修：+5%<br>
+            ─ 全室裝修完整，含天花板、燈具配置、<br>
+            &nbsp;&nbsp;系統櫃或固定收納設備、室內地坪鋪設、<br>
+            &nbsp;&nbsp;浴室及廚房設備完善等。<br><br>
+            ‧ 簡易裝修：+3%<br>
+            ─ 以油漆粉刷、局部修繕、<br>
+            &nbsp;&nbsp;簡單天花板或部分室內裝修為主，<br>
+            &nbsp;&nbsp;設備水準較中等裝修為低。<br><br>
+            ‧ 未裝修：0%<br>
+            ─ 僅具備基本結構與基本建材，<br>
+            &nbsp;&nbsp;未做額外室內裝潢裝修。<br><br>
+            ※ 以「最高租金」為基數，按 0 / 3 / 5 % 計算。
           </span>
         </div>
         <br>
@@ -160,10 +177,16 @@
         <div class="tooltip">
           設備上限 ℹ️
           <span class="tooltip-text">
-            <b>設備調整金額（依表四）</b><br>
-            套房：最高 1,000 元／月<br>
-            非套房：最高 2,000 元／月<br><br>
-            ※ 設備為固定加法，不是百分比
+            <b>設備調整金額（依原始資料表四）</b><br>
+            ‧ 設備項目：依原表列舉<br>
+            ─ 如冷氣機、冰箱、洗衣機、熱水器、<br>
+            &nbsp;&nbsp;床組、衣櫃、書桌椅、網路、有線電視等，<br>
+            &nbsp;&nbsp;各項設備可加計一定金額。<br><br>
+            ‧ 合計上限：<br>
+            ─ 套房：設備調整金額合計最高以 1,000 元／月為上限。<br>
+            ─ 非套房：設備調整金額合計最高以 2,000 元／月為上限。<br><br>
+            ※ 本工具僅輸入「合計後設備金額」，<br>
+            &nbsp;&nbsp;並自動套用 1,000 / 2,000 元上限規定。
           </span>
         </div>
       </div>
@@ -233,7 +256,7 @@ const HOUSE_TABLE = {
 "其它":[375,370,360,355,345,335,325,310,295]
 };
 
-// 年齡切段：0–4, 5–9, 10–14...
+// 年齡對應欄位：0–4, 5–9, 10–14, 15–19, 20–24, 25–29, 30–34, 35–39, 40+
 const AGE_BANDS = [4,9,14,19,24,29,34,39,999];
 
 function bandIndex(age){
@@ -259,7 +282,7 @@ document.getElementById("rentForm").addEventListener("submit", e => {
   const detailEl = document.getElementById("detail");
   const noteEl   = document.getElementById("note");
 
-  // 套房 or 非套房
+  // 依坪數自動判斷：套房 / 非套房
   const isStudio = pings <= 15 ? "studio" : "house";
   const table    = isStudio === "studio" ? STUDIO_TABLE : HOUSE_TABLE;
   const upperLimit = isStudio === "studio" ? 21000 : 35000;
@@ -267,7 +290,7 @@ document.getElementById("rentForm").addEventListener("submit", e => {
   document.getElementById("equipCapLabel").textContent =
     isStudio === "studio" ? "上限 1,000 元" : "上限 2,000 元";
 
-  // 租金超過最高上限 → 直接無法承作
+  // 超過最高租金上限 → 直接無法承作
   if(current > upperLimit){
     resEl.textContent = "無法承作";
     resEl.className   = "result warn";
@@ -287,11 +310,11 @@ document.getElementById("rentForm").addEventListener("submit", e => {
     return;
   }
 
-  const priceBand = row[idx];   
-  const priceBase = row[0];     
+  const priceBand = row[idx];   // 該屋齡單價
+  const priceBase = row[0];     // 0–4 年基準
   const rateFromBase = priceBase ? (priceBand/priceBase - 1) : 0;
 
-  const highest = Math.ceil(priceBand * pings);
+  const highest = Math.ceil(priceBand * pings); // 最高租金（進位）
   const pass    = highest >= current;
 
   resEl.textContent = pass ? "O" : "X";
@@ -308,10 +331,11 @@ document.getElementById("rentForm").addEventListener("submit", e => {
         `現在租金：<b>${current.toLocaleString()}</b> 元`
     );
 
+  // 只有未通過時，才依規定顯示額外加分
   if(!pass){
-    const decoBonus  = Math.ceil(highest * (decoPct/100));
-    const areaBonus  = Math.ceil(highest * (areaPct/100));
-    const equipCap   = isStudio === "studio" ? 1000 : 2000;
+    const decoBonus  = Math.ceil(highest * (decoPct/100));   // 室內裝修
+    const areaBonus  = Math.ceil(highest * (areaPct/100));   // 區位
+    const equipCap   = isStudio === "studio" ? 1000 : 2000;  // 規定上限
     const equipBonus = Math.min(Math.ceil(Math.max(equipInput,0)), equipCap);
     const totalBonus = decoBonus + areaBonus + equipBonus;
     const highestPlus= highest + totalBonus;
