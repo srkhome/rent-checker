@@ -33,7 +33,7 @@ legend{font-size:13px;color:#555}
 .tooltip span{
   visibility:hidden;
   opacity:0;
-  width:320px;
+  width:340px;
   background:#333;
   color:#fff;
   padding:10px;
@@ -123,34 +123,36 @@ legend{font-size:13px;color:#555}
 </label>
 
 <label>
-設備加分金額
+設備加分金額（會自動套用上限）
 <input id="equip" type="number" min="0" value="0">
 </label>
 
 <div style="margin-top:8px">
-<div class="tooltip">區位說明 ℹ️
+<div class="tooltip">區位（0 / 3 / 5%）判斷條件 ℹ️
 <span>
-表二 區位因素調整表<br>
-優質區位 5%：交通便利、生活機能完善、就業就學密集<br>
-中上區位 3%：主要生活圈、交通可及性佳<br>
-中下區位 0%：交通與生活機能相對不足
+<b>表二 區位因素調整表</b><br><br>
+<b>優質區位 5%</b>：核心生活圈，交通運輸便捷，生活機能完善或就業機會高度集中。<br><br>
+<b>中上區位 3%</b>：一般主要生活圈，交通可及性佳，周邊設施水準中上或臨近特定產業區。<br><br>
+<b>中下區位 0%</b>：非主要生活圈，交通便利性相對不足，周邊設施水準有限或就業機會分散。
 </span>
 </div><br>
 
-<div class="tooltip">裝修說明 ℹ️
+<div class="tooltip">室內裝修（0 / 3 / 5%）判斷條件 ℹ️
 <span>
-表三 室內裝修調整表<br>
-中等裝修 5%：系統櫃、完整天花設計<br>
-簡易裝修 3%：基本油漆、收納<br>
-未裝修 0%
+<b>表三 室內裝修調整表</b><br><br>
+<b>中等裝修 5%</b>：天花板有特殊設計，並具備系統櫃等收納機能，兼具舒適與美觀。<br><br>
+<b>簡易裝修 3%</b>：天花板有基本油漆或整理，具備基本收納機能。<br><br>
+<b>未裝修 0%</b>：僅提供基本居住功能，天花板無額外整理。
 </span>
 </div><br>
 
-<div class="tooltip">設備說明 ℹ️
+<div class="tooltip">設備上限（1,000 / 2,000）判斷條件 ℹ️
 <span>
-表四 設備調整<br>
-套房上限 1,000 元／月<br>
-非套房上限 2,000 元／月
+<b>設備調整值（ΔE）</b><br><br>
+案件提供之設備項目優於一般租賃市場水準，例如：冷氣、冰箱、洗衣機、床組等。<br><br>
+<b>套房最高上限：1,000 元／月</b><br>
+<b>非套房最高上限：2,000 元／月</b><br><br>
+設備加分金額不得超過上述上限。
 </span>
 </div>
 </div>
@@ -228,69 +230,104 @@ const HOUSE_TABLE = {
 "其它":[375,370,360,355,345,335,325,310,295]
 };
 
+// 屋齡區間：0–4, 5–9, 10–14, 15–19, 20–24, 25–29, 30–34, 35–39, 40+
 const AGE_BANDS=[4,9,14,19,24,29,34,39,999];
-const band=i=>AGE_BANDS.findIndex(v=>i<=v);
-
-document.getElementById("form").onsubmit=e=>{
-e.preventDefault();
-
-const d=district.value;
-const a=+age.value;
-const p=+ping.value;
-const r=+rent.value;
-
-const isStudio=p<=15;
-const table=isStudio?STUDIO_TABLE:HOUSE_TABLE;
-const limit=isStudio?21000:35000;
-
-const res=document.getElementById("result");
-const det=document.getElementById("detail");
-
-if(r>limit){
-res.textContent="無法承作";
-res.className="result warn";
-det.textContent=`${isStudio?"套房":"非套房"}租金上限 ${limit.toLocaleString()} 元`;
-return;
+function bandIndex(age){
+  for(let i=0;i<AGE_BANDS.length;i++){
+    if(age<=AGE_BANDS[i]) return i;
+  }
+  return AGE_BANDS.length-1;
 }
 
-const row=table[d];
-const idx=band(a);
-const base=row[0];
-const unit=row[idx];
-const rate=((unit/base-1)*100).toFixed(2);
-const max=Math.ceil(unit*p);
+document.getElementById("form").onsubmit = (e) => {
+  e.preventDefault();
 
-if(max>=r){
-res.textContent="O";
-res.className="result ok";
-det.innerHTML=`行政區：<b>${d}</b><br>租金區間表（0–4 年基準）：<b>${base}</b><br>調等率：<b>${rate}%</b>`;
-}else{
-res.textContent="X";
-res.className="result warn";
+  const d = document.getElementById("district").value;
+  const a = Number(document.getElementById("age").value);
+  const p = Number(document.getElementById("ping").value);
+  const r = Number(document.getElementById("rent").value);
 
-const deco=+deco.value;
-const area=+area.value;
-const equipCap=isStudio?1000:2000;
-const equip=Math.min(+equip.value,equipCap);
+  const decoPct = Number(document.getElementById("deco").value); // 0/3/5
+  const areaPct = Number(document.getElementById("area").value); // 0/3/5
+  const equipInput = Number(document.getElementById("equip").value || 0);
 
-const bonus=Math.ceil(max*(deco+area)/100)+equip;
-const max2=max+bonus;
+  const isStudio = p <= 15;                 // 自動判斷套房/非套房（不顯示）
+  const limit = isStudio ? 21000 : 35000;   // 上限規則
+  const table = isStudio ? STUDIO_TABLE : HOUSE_TABLE;
 
-det.innerHTML=
-`行政區：<b>${d}</b><br>
-最高租金：<b>${max.toLocaleString()}</b><br>
-<div class="bonus-box">
-額外加分後最高租金：<b>${max2.toLocaleString()}</b><br>
-加分後判斷：<b style="color:${max2>=r?"green":"red"}">${max2>=r?"O":"X"}</b>
-</div>`;
-}
+  const res = document.getElementById("result");
+  const det = document.getElementById("detail");
+
+  // 上限直接擋
+  if(r > limit){
+    res.textContent = "無法承作";
+    res.className = "result warn";
+    det.textContent = `${isStudio ? "套房" : "非套房"}租金上限 ${limit.toLocaleString()} 元`;
+    return;
+  }
+
+  const row = table[d];
+  if(!row){
+    res.textContent = "";
+    res.className = "result";
+    det.textContent = "找不到此行政區的單價資料。";
+    return;
+  }
+
+  const idx = bandIndex(a);
+  const base = row[0];        // 0–4年基準單價
+  const unit = row[idx];      // 該屋齡單價
+
+  const max = Math.ceil(unit * p); // 最高租金（無條件進位整數）
+  const pass = max >= r;
+
+  if(pass){
+    res.textContent = "O";
+    res.className = "result ok";
+    det.innerHTML =
+      `行政區：<b>${d}</b><br>`+
+      `租金區間表（0–4 年基準）：<b>${base}</b>`;
+    return;
+  }
+
+  // 未通過才顯示額外加分
+  res.textContent = "X";
+  res.className = "result warn";
+
+  const equipCap = isStudio ? 1000 : 2000;
+  const equipBonus = Math.min(Math.max(Math.ceil(equipInput),0), equipCap);
+
+  const decoBonus = Math.ceil(max * (decoPct/100));
+  const areaBonus = Math.ceil(max * (areaPct/100));
+
+  const bonusTotal = decoBonus + areaBonus + equipBonus;
+  const max2 = max + bonusTotal;
+  const pass2 = max2 >= r;
+
+  det.innerHTML =
+    `行政區：<b>${d}</b><br>`+
+    `最高租金：<b>${max.toLocaleString()}</b><br>`+
+    `<div class="bonus-box">`+
+      `<b>額外加分（依規定）</b><br>`+
+      `‧ 室內裝修（${decoPct}%）：<b>${decoBonus.toLocaleString()}</b> 元<br>`+
+      `‧ 區位（${areaPct}%）：<b>${areaBonus.toLocaleString()}</b> 元<br>`+
+      `‧ 設備（上限 ${equipCap.toLocaleString()}）：<b>${equipBonus.toLocaleString()}</b> 元<br>`+
+      `合計加分：<b>${bonusTotal.toLocaleString()}</b> 元<br>`+
+      `加分後最高租金：<b>${max2.toLocaleString()}</b> 元<br>`+
+      `加分後判斷：<b style="color:${pass2 ? "green" : "red"}">${pass2 ? "O" : "X"}</b>`+
+    `</div>`;
 };
 
-// tooltip for mobile
+// tooltip mobile support
 document.querySelectorAll(".tooltip").forEach(t=>{
-t.onclick=e=>{e.stopPropagation();t.classList.toggle("show");}
+  t.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    t.classList.toggle("show");
+  });
 });
-document.body.onclick=()=>document.querySelectorAll(".tooltip").forEach(t=>t.classList.remove("show"));
+document.body.addEventListener("click", ()=>{
+  document.querySelectorAll(".tooltip").forEach(t=>t.classList.remove("show"));
+});
 </script>
 
 </body>
