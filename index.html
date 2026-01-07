@@ -232,6 +232,8 @@ const HOUSE_TABLE = {
 
 // 屋齡區間：0–4, 5–9, 10–14, 15–19, 20–24, 25–29, 30–34, 35–39, 40+
 const AGE_BANDS=[4,9,14,19,24,29,34,39,999];
+const AGE_LABELS=["0–4","5–9","10–14","15–19","20–24","25–29","30–34","35–39","40+"];
+
 function bandIndex(age){
   for(let i=0;i<AGE_BANDS.length;i++){
     if(age<=AGE_BANDS[i]) return i;
@@ -275,18 +277,19 @@ document.getElementById("form").onsubmit = (e) => {
   }
 
   const idx = bandIndex(a);
-  const base = row[0];        // 0–4年基準單價
-  const unit = row[idx];      // 該屋齡單價
-
+  const unit = row[idx]; // 該屋齡單價（顯示與計算一致）
   const max = Math.ceil(unit * p); // 最高租金（無條件進位整數）
   const pass = max >= r;
+
+  const commonInfo =
+    `行政區：<b>${d}</b><br>`+
+    `屋齡區間：<b>${AGE_LABELS[idx]} 年</b><br>`+
+    `該屋齡單價：<b>${unit}</b>`;
 
   if(pass){
     res.textContent = "O";
     res.className = "result ok";
-    det.innerHTML =
-      `行政區：<b>${d}</b><br>`+
-      `租金區間表（0–4 年基準）：<b>${base}</b>`;
+    det.innerHTML = commonInfo;
     return;
   }
 
@@ -305,7 +308,7 @@ document.getElementById("form").onsubmit = (e) => {
   const pass2 = max2 >= r;
 
   det.innerHTML =
-    `行政區：<b>${d}</b><br>`+
+    commonInfo + "<br>" +
     `最高租金：<b>${max.toLocaleString()}</b><br>`+
     `<div class="bonus-box">`+
       `<b>額外加分（依規定）</b><br>`+
