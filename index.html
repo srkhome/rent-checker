@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>總管家包租代管 - 租金區間試算表</title>
 
+<!-- 引入 html2canvas 程式庫用於截圖功能 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
 <style>
 :root {
   --primary-color: #f39c12;
@@ -12,7 +15,7 @@
   --bg-color: #f4f7f6;
   --warn-color: #e74c3c;
   --ok-color: #27ae60;
-  --fieldset-bg: #fff9eb; /* 淺橘色背景 */
+  --fieldset-bg: #fff9eb;
 }
 
 body {
@@ -38,7 +41,7 @@ h1 {
   font-size: 24px;
   color: var(--secondary-color);
   text-align: center;
-  margin-bottom: 5px;
+  margin: 0;
 }
 
 .subtitle {
@@ -71,14 +74,12 @@ input:focus, select:focus {
   box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.2);
 }
 
-/* 修改後的 fieldset 樣式：增加顯眼的淺色背景 */
 fieldset {
   border: 1px solid #f39c12;
   border-radius: 12px;
   padding: 18px;
   margin-top: 25px;
   background-color: var(--fieldset-bg);
-  box-shadow: inset 0 0 10px rgba(243, 156, 18, 0.05);
 }
 
 legend {
@@ -91,7 +92,6 @@ legend {
   border: 1px solid #f39c12;
 }
 
-/* 設備多選樣式 */
 .equip-group {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -108,11 +108,6 @@ legend {
   background: rgba(255,255,255,0.7);
   padding: 8px;
   border-radius: 6px;
-  border: 1px solid rgba(243, 156, 18, 0.1);
-}
-
-.checkbox-item:hover {
-  background: #fff;
 }
 
 .checkbox-item input {
@@ -122,33 +117,49 @@ legend {
   transform: scale(1.2);
 }
 
-button {
+.btn-primary {
   background-color: var(--primary-color);
   color: white;
   border: none;
   font-weight: bold;
   cursor: pointer;
   margin-top: 25px;
-  transition: background 0.3s;
-  font-size: 18px;
   height: 54px;
 }
 
-button:hover {
-  background-color: #e67e22;
+.btn-download {
+  background-color: var(--secondary-color);
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 15px;
+  display: none; 
 }
 
+/* 結果區塊樣式 */
 .result-area {
   margin-top: 30px;
   text-align: center;
-  padding-top: 20px;
-  border-top: 2px dashed #eee;
+  padding: 25px;
+  border-radius: 12px;
+  background: #fff;
+  border: 2px solid #f39c12; /* 使用品牌橘色框 */
+}
+
+/* 僅截圖時顯示的報告標頭 */
+.shot-header {
+  display: none;
+  border-bottom: 2px solid #f39c12;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+  color: var(--secondary-color);
 }
 
 .result-title {
-  font-size: 64px;
+  font-size: 72px;
   font-weight: 900;
-  margin: 10px 0;
+  margin: 5px 0;
 }
 
 .ok { color: var(--ok-color); }
@@ -156,9 +167,9 @@ button:hover {
 
 .detail {
   text-align: left;
-  font-size: 15px;
-  line-height: 1.8;
-  color: #444;
+  font-size: 16px;
+  line-height: 2;
+  color: #333;
 }
 
 .bonus-box {
@@ -167,7 +178,6 @@ button:hover {
   padding: 15px;
   margin-top: 15px;
   border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
 .note {
@@ -178,7 +188,6 @@ button:hover {
   font-weight: bold;
 }
 
-/* Tooltip 改良 */
 .info-icon {
   display: inline-block;
   width: 18px;
@@ -205,6 +214,14 @@ button:hover {
 }
 
 .show { display: block; }
+
+.watermark {
+  display: none;
+  font-size: 12px;
+  color: #bdc3c7;
+  text-align: right;
+  margin-top: 15px;
+}
 </style>
 </head>
 
@@ -212,7 +229,7 @@ button:hover {
 
 <div class="container">
   <h1>租金區間試算表</h1>
-  <div class="subtitle">總管家包租代管 專用工具</div>
+  <div class="subtitle">總管家包租代管 專業服務</div>
 
   <form id="calcForm">
     <label>行政區</label>
@@ -241,7 +258,6 @@ button:hover {
 
     <fieldset>
       <legend>額外加分項目</legend>
-
       <label>室內裝修 <span class="info-icon" onclick="toggleTooltip('decoTip')">?</span></label>
       <div id="decoTip" class="tooltip-content">
         <b>中等裝修 5%</b>：有天花板設計、系統櫃收納。<br>
@@ -276,13 +292,23 @@ button:hover {
       </div>
     </fieldset>
 
-    <button type="submit">確認送出試算</button>
+    <button type="submit" class="btn-primary">確認送出試算</button>
   </form>
 
+  <!-- 試算結果截圖區 -->
   <div id="resultArea" class="result-area" style="display:none;">
+    <div class="shot-header" id="sh">
+        <div style="font-size: 20px; font-weight: bold;">總管家包租代管</div>
+        <div style="font-size: 14px; opacity: 0.8;">社會住宅租金區間判定報告單</div>
+    </div>
+    
     <div id="resultSign" class="result-title"></div>
     <div id="detailLog" class="detail"></div>
+    
+    <div class="watermark" id="wm">判定時間：<span id="timestamp"></span></div>
   </div>
+
+  <button id="downloadBtn" class="btn-download">📸 下載結果判定照片</button>
 
   <div class="note">⚠️ 本工具僅供參考，最終租金核定以審查單位公文為準。</div>
 </div>
@@ -313,7 +339,6 @@ function toggleTooltip(id) {
   if (!isShow) tip.classList.add('show');
 }
 
-// 點擊外面自動關閉提示
 document.addEventListener('click', (e) => {
   if (!e.target.classList.contains('info-icon')) {
     document.querySelectorAll('.tooltip-content').forEach(el => el.classList.remove('show'));
@@ -347,13 +372,15 @@ document.getElementById("calcForm").onsubmit = function(e) {
   const resultArea = document.getElementById("resultArea");
   const resultSign = document.getElementById("resultSign");
   const detailLog = document.getElementById("detailLog");
+  const downloadBtn = document.getElementById("downloadBtn");
 
   resultArea.style.display = "block";
+  downloadBtn.style.display = "block"; 
 
   if (rent > rentLimit) {
     resultSign.textContent = "無法承作";
     resultSign.className = "result-title warn";
-    detailLog.innerHTML = `原因：該物件為<b>${typeLabel}</b>，簽約租金上限為 <b>${rentLimit.toLocaleString()} 元</b>，您輸入的租金已超出。`;
+    detailLog.innerHTML = `原因：該物件為<b>${typeLabel}</b>，簽約租金上限為 <b>${rentLimit.toLocaleString()} 元</b>，您輸入的租金已超出規範。`;
     return;
   }
 
@@ -368,15 +395,15 @@ document.getElementById("calcForm").onsubmit = function(e) {
   const headerHtml = `
     物件類別：<b>${typeLabel}</b><br>
     行政區：<b>${district}</b><br>
-    屋齡：<b>${age} 年</b> (級距：${AGE_LABELS[idx]})<br>
-    政府公告單價：<b>${unitPrice} 元/坪</b><br>
-    試算基準租金：<b>${baseMaxRent.toLocaleString()} 元</b>
+    屋齡：<b>${age} 年</b> (${AGE_LABELS[idx]})<br>
+    公告單價：<b>${unitPrice} 元/坪</b><br>
+    基準上限：<b>${baseMaxRent.toLocaleString()} 元</b>
   `;
 
   if (isBasePass) {
     resultSign.textContent = "O";
     resultSign.className = "result-title ok";
-    detailLog.innerHTML = headerHtml + `<br><span style="color:green; font-weight:bold;">✅ 恭喜！基礎試算已通過。</span>`;
+    detailLog.innerHTML = headerHtml + `<br><span style="color:#27ae60; font-weight:bold;">✅ 基礎試算合規。</span>`;
   } else {
     const decoBonus = Math.ceil(baseMaxRent * (decoPct / 100));
     const areaBonus = Math.ceil(baseMaxRent * (areaPct / 100));
@@ -388,19 +415,51 @@ document.getElementById("calcForm").onsubmit = function(e) {
 
     detailLog.innerHTML = headerHtml + `
       <div class="bonus-box">
-        <b>額外加分試算結果：</b><br>
-        ‧ 室內裝修 (+${decoPct}%)：<b>+ ${decoBonus.toLocaleString()}</b> 元<br>
-        ‧ 區位優勢 (+${areaPct}%)：<b>+ ${areaBonus.toLocaleString()}</b> 元<br>
-        ‧ 設備加分 (已選 ${checkboxes.length} 項)：<b>+ ${equipBonusTotal.toLocaleString()}</b> 元<br>
+        <b>額外加分判定：</b><br>
+        ‧ 裝修 (+${decoPct}%)：<b>+ ${decoBonus.toLocaleString()}</b> 元<br>
+        ‧ 區位 (+${areaPct}%)：<b>+ ${areaBonus.toLocaleString()}</b> 元<br>
+        ‧ 設備 (${checkboxes.length}項)：<b>+ ${equipBonusTotal.toLocaleString()}</b> 元<br>
         <hr style="border:0; border-top:1px solid #f39c12; margin: 10px 0; opacity: 0.3;">
-        最終上限金額：<b>${finalMaxRent.toLocaleString()}</b> 元<br>
-        目前欲簽租金：<b>${rent.toLocaleString()}</b> 元<br>
-        判定結果：<b style="color:${isFinalPass ? '#27ae60' : '#e74c3c'}">${isFinalPass ? '合規，可承作' : '不合規，租金過高'}</b>
+        最終總上限：<b>${finalMaxRent.toLocaleString()}</b> 元<br>
+        欲簽約租金：<b>${rent.toLocaleString()}</b> 元<br>
+        判定結果：<b style="color:${isFinalPass ? '#27ae60' : '#e74c3c'}">${isFinalPass ? '合規，可開發' : '不合規，租金過高'}</b>
       </div>
     `;
   }
   
   resultArea.scrollIntoView({ behavior: 'smooth' });
+};
+
+// 【重要】僅下載結果部分的邏輯
+document.getElementById("downloadBtn").onclick = function() {
+  const target = document.getElementById("resultArea"); // 只截結果區
+  const sh = document.getElementById("sh");
+  const wm = document.getElementById("wm");
+  const ts = document.getElementById("timestamp");
+
+  // 更新截圖時間
+  const now = new Date();
+  ts.textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
+
+  // 截圖前：暫時顯示隱藏的標頭與浮水印
+  sh.style.display = "block";
+  wm.style.display = "block";
+
+  html2canvas(target, {
+    scale: 2,
+    backgroundColor: "#ffffff",
+    logging: false,
+    useCORS: true
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = `總管家租金判定_${new Date().getTime()}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+
+    // 截圖後：恢復原本畫面的樣子
+    sh.style.display = "none";
+    wm.style.display = "none";
+  });
 };
 
 function showError(msg) {
