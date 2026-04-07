@@ -144,7 +144,7 @@ legend {
   padding: 25px;
   border-radius: 12px;
   background: #fff;
-  border: 2px solid #f39c12; /* 使用品牌橘色框 */
+  border: 2px solid #f39c12;
 }
 
 /* 僅截圖時顯示的報告標頭 */
@@ -392,20 +392,26 @@ document.getElementById("calcForm").onsubmit = function(e) {
   const baseMaxRent = Math.ceil(unitPrice * ping);
   const isBasePass = baseMaxRent >= rent;
 
-  const headerHtml = `
+  // 動態顯示基礎資訊 (合規與否顯示不同內容)
+  let headerHtml = `
     物件類別：<b>${typeLabel}</b><br>
     行政區：<b>${district}</b><br>
     屋齡：<b>${age} 年</b> (${AGE_LABELS[idx]})<br>
     面積：<b>${ping} 坪</b><br>
-    公告單價：<b>${unitPrice} 元/坪</b><br>
-    基準上限：<b>${baseMaxRent.toLocaleString()} 元</b>
   `;
 
   if (isBasePass) {
     resultSign.textContent = "O";
     resultSign.className = "result-title ok";
+    // 通過時，隱藏單價與基準上限
     detailLog.innerHTML = headerHtml + `<br><span style="color:#27ae60; font-weight:bold;">✅ 基礎試算合規。</span>`;
   } else {
+    // 不通過時，顯示單價與上限以解釋加分邏輯
+    headerHtml += `
+      公告單價：<b>${unitPrice} 元/坪</b><br>
+      基準上限：<b>${baseMaxRent.toLocaleString()} 元</b>
+    `;
+
     const decoBonus = Math.ceil(baseMaxRent * (decoPct / 100));
     const areaBonus = Math.ceil(baseMaxRent * (areaPct / 100));
     const finalMaxRent = baseMaxRent + decoBonus + areaBonus + equipBonusTotal;
@@ -431,18 +437,15 @@ document.getElementById("calcForm").onsubmit = function(e) {
   resultArea.scrollIntoView({ behavior: 'smooth' });
 };
 
-// 【重要】僅下載結果部分的邏輯
 document.getElementById("downloadBtn").onclick = function() {
-  const target = document.getElementById("resultArea"); // 只截結果區
+  const target = document.getElementById("resultArea");
   const sh = document.getElementById("sh");
   const wm = document.getElementById("wm");
   const ts = document.getElementById("timestamp");
 
-  // 更新截圖時間
   const now = new Date();
   ts.textContent = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes()}`;
 
-  // 截圖前：暫時顯示隱藏的標頭與浮水印
   sh.style.display = "block";
   wm.style.display = "block";
 
@@ -457,7 +460,6 @@ document.getElementById("downloadBtn").onclick = function() {
     link.href = canvas.toDataURL("image/png");
     link.click();
 
-    // 截圖後：恢復原本畫面的樣子
     sh.style.display = "none";
     wm.style.display = "none";
   });
