@@ -280,7 +280,7 @@ legend {
         <option value="5">優質區位 (5%)</option>
       </select>
 
-      <label>設備加分 (每項 +$500，上限 $2000)</label>
+      <label>設備加分 (每項 +$500，套房上限$1000 / 非套房上限$2000)</label>
       <div style="font-size: 11px; color: #d35400; margin-bottom: 8px;">※ 只計算項目種類，不計算數量</div>
       <div class="equip-group" id="equipGroup">
         <label class="checkbox-item"><input type="checkbox" value="500"> 冷氣</label>
@@ -360,14 +360,15 @@ document.getElementById("calcForm").onsubmit = function(e) {
     return;
   }
 
-  let equipBonusTotal = 0;
-  const checkboxes = document.querySelectorAll('#equipGroup input:checked');
-  equipBonusTotal = checkboxes.length * 500;
-  if (equipBonusTotal > 2000) equipBonusTotal = 2000;
-
   const isStudio = ping <= 15;
   const rentLimit = isStudio ? 21000 : 35000;
   const typeLabel = isStudio ? "套房" : "非套房";
+  const equipLimit = isStudio ? 1000 : 2000;
+
+  let equipBonusTotal = 0;
+  const checkboxes = document.querySelectorAll('#equipGroup input:checked');
+  equipBonusTotal = checkboxes.length * 500;
+  if (equipBonusTotal > equipLimit) equipBonusTotal = equipLimit;
 
   const resultArea = document.getElementById("resultArea");
   const resultSign = document.getElementById("resultSign");
